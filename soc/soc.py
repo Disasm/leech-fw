@@ -11,11 +11,13 @@ import lxbuildenv
 
 import argparse
 
+from litex.build.generic_platform import Subsignal, Pins, IOStandard
 from litex.soc.integration.builder import Builder, builder_args, builder_argdict
 from litex.soc.integration.soc_core import soc_core_args, soc_core_argdict, SoCCore
 
 from leech import Platform, CRG
 from spi_slave import SPIBridge
+from peripherals.ps2 import PS2Controller
 
 
 # BaseSoC ------------------------------------------------------------------------------------------
@@ -49,6 +51,22 @@ class BaseSoC(SoCCore):
         spi_pads = platform.request("spi_slave")
         self.submodules.bridge = SPIBridge(spi_pads)
         self.bus.add_master(name="bridge", master=self.bridge.wishbone)
+
+        ps2_ext = [
+            ("ps2", 0,
+                Subsignal("dat", Pins("25"), IOStandard("LVCMOS33")),  # PB1
+                Subsignal("clk", Pins("26"), IOStandard("LVCMOS33")),  # PB0
+            )
+        ]
+        platform.add_extension(ps2_ext)
+        ps2 = platform.request("ps2")
+        self.submodules.ps2 = PS2Controller(ps2.dat, ps2.clk, sys_clk_freq)
+        self.add_csr("ps2")
+        if hasattr(self.cpu, "interrupt"):
+            self.add_interrupt("ps2")
+
+        irq = platform.request("irq")
+        self.sync += irq.eq(self.ps2.ev.irq)
 
         # Suppress yosys output
         assert hasattr(self.platform.toolchain, "build_template")
