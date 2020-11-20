@@ -1,0 +1,9 @@
+[package]
+name = "svd2ral"
+version = "0.1.0"
+authors = ["Vadim Kaushan <admin@disasm.info>"]
+edition = "2018"
+
+[dependencies]
+svd-parser = "0.9.0"
+anyhow = "1.0.33"
