@@ -9,3 +9,4 @@ pub(crate) mod instances;
 pub mod metadata;
 
 pub use self::instances::ctrl;
+pub use self::instances::ps2;
