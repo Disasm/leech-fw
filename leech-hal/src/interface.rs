@@ -1,8 +1,9 @@
 use cortex_m::interrupt::free as interrupt_free;
 use litex_pac::register::MemoryInterface;
 use stm32f4xx_hal::prelude::*;
+use stm32f4xx_hal::stm32;
 use stm32f4xx_hal::rcc::Clocks;
-use stm32f4xx_hal::gpio::{Input, Floating, Output, PushPull, Alternate, AF0, AF5, Speed};
+use stm32f4xx_hal::gpio::{Input, Floating, Output, PushPull, Alternate, AF0, AF5, Speed, ExtiPin, Edge};
 use stm32f4xx_hal::gpio::gpioa::PA8;
 use stm32f4xx_hal::gpio::gpiob::{PB2, PB10, PB12, PB13, PB14, PB15};
 use stm32f4xx_hal::spi::Spi;
@@ -14,7 +15,7 @@ pub struct SpiMemoryInterface {
     cs: PB12<Output<PushPull>>,
     creset: PB2<Output<PushPull>>,
     _mco: PA8<Alternate<AF0>>,
-    _irq: PB10<Input<Floating>>,
+    irq: PB10<Input<Floating>>,
     us_ticks: u32,
 }
 
@@ -40,6 +41,8 @@ impl SpiMemoryInterface {
         let mosi = mosi.into_alternate_af5().set_speed(Speed::VeryHigh);
         let spi = Spi::spi2(spi, (sck, miso, mosi), MODE_0, 8_000_000.hz(), clocks);
 
+        let irq = irq.into_floating_input();
+
         // Setup MCO
         unsafe {
             // 16MHz output
@@ -57,7 +60,7 @@ impl SpiMemoryInterface {
             cs,
             creset,
             _mco: mco.into_alternate_af0(),
-            _irq: irq.into_floating_input(),
+            irq,
             us_ticks,
         }
     }
@@ -85,6 +88,22 @@ impl SpiMemoryInterface {
             let ptr = self as *mut _;
             crate::pac::register::set_memory_interface(&mut *ptr);
         }
+    }
+
+    pub fn irq_listen(&mut self, exti: &mut stm32::EXTI, syscfg: &mut stm32::SYSCFG) {
+        self.irq.make_interrupt_source(syscfg);
+        self.irq.enable_interrupt(exti);
+        self.irq.trigger_on_edge(exti, Edge::RISING);
+
+        // Enable interrupts
+        stm32::NVIC::unpend(stm32::Interrupt::EXTI15_10);
+        unsafe {
+            stm32::NVIC::unmask(stm32::Interrupt::EXTI15_10);
+        };
+    }
+
+    pub fn irq_unlisten(&mut self) {
+        stm32::NVIC::mask(stm32::Interrupt::EXTI15_10);
     }
 
     fn delay_us(&mut self, us: u32) {
