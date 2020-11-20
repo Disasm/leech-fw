@@ -8,3 +8,6 @@ edition = "2018"
 cortex-m = "0.6.4"
 litex-pac = { path = "../litex-pac" }
 stm32f4xx-hal = { version = "0.8.3", features = ["stm32f411"] }
+
+[build-dependencies]
+litex-pac = { path = "../litex-pac" }
