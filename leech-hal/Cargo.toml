@@ -1,0 +1,10 @@
+[package]
+name = "leech-hal"
+version = "0.1.0"
+authors = ["Vadim Kaushan <admin@disasm.info>"]
+edition = "2018"
+
+[dependencies]
+cortex-m = "0.6.4"
+litex-pac = { path = "../litex-pac" }
+stm32f4xx-hal = { version = "0.8.3", features = ["stm32f411"] }
